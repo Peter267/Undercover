@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
   
+  <!-- "LXGW WenKai" 字体链接，已存在于原始文件 -->
   <link href="https://fontsapi.zeoseven.com/292/main/result.css" rel="stylesheet">
 
   <script>
@@ -24,7 +25,8 @@
             dark: '#1D2129',
           },
           fontFamily: {
-            sans: ['opposans', 'system-ui', 'sans-serif'],
+            // 将默认的 sans 字体更改为 "LXGW WenKai"
+            sans: ['LXGW WenKai', 'system-ui', 'sans-serif'], 
           },
         },
       }
@@ -32,11 +34,13 @@
   </script>
   
   <style>
+    /* 游戏标题的特殊字体 "Ma Shan Zheng" 保持不变 */
     @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
     
-    body {
+    /* 移除 body 的字体定义，让 Tailwind 的 font-sans 来控制 */
+    /* body {
       font-family: 'LXGW WenKai', sans-serif;
-    }
+    } */ 
 
     .card-shadow {
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
@@ -148,7 +152,7 @@
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans text-dark">
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 font-sans text-dark min-h-screen">
   <div class="container mx-auto px-4 py-8 max-w-4xl">
     <header class="text-center mb-10">
       <h1 class="text-4xl md:text-5xl font-bold text-primary mb-3 tracking-tight game-title">
@@ -246,7 +250,11 @@
       <div id="voteScreen" class="hidden bg-white/90 backdrop-blur rounded-2xl p-8 card-shadow">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-primary">投票环节</h2>
-          <div class="text-lg font-medium"><span id="currentVoter">1</span><span class="text-gray-500">/</span><span id="totalVoters">6</span></div>
+          <div class="text-lg font-medium">
+            <span id="currentVoter">1</span>
+            <span class="text-gray-500">/</span>
+            <span id="totalVoters">6</span>
+          </div>
         </div>
         <div class="mb-6">
           <h3 class="text-xl font-bold mb-3 text-primary">请投票选出你认为是卧底的玩家</h3>
@@ -371,7 +379,7 @@
             blankCardWarning.classList.add('hidden');
         }
         
-        // **核心改动：保存人数到 localStorage**
+        // 保存人数到 localStorage
         localStorage.setItem('playerCount', newCount);
     }
     
@@ -381,7 +389,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadWordLibrary();
         
-        // **核心改动：读取 localStorage 中的人数设置**
+        // 读取 localStorage 中的人数设置
         const savedPlayerCount = localStorage.getItem('playerCount');
         if (savedPlayerCount) {
             playerCountSlider.value = savedPlayerCount;
@@ -421,9 +429,18 @@
       updatePlayerRoleScreen();
     });
     
-    // 重新开始游戏
+    // 重新开始游戏 (逻辑修改为第二个文件的样式)
     restartBtn.addEventListener('click', () => {
-      location.reload();
+      gameEndScreen.classList.add('hidden');
+      startScreen.classList.remove('hidden');
+      // Reset game data to initial state for a fresh start on the setup screen
+      gameData.playerCount = 6;
+      gameData.hasBlankCard = false;
+      playerCountSlider.value = 6;
+      playerCountValue.textContent = 6;
+      hasBlankCard.checked = false;
+      blankCardWarning.classList.add('hidden');
+      localStorage.setItem('playerCount', 6); // Also reset localStorage
     });
     
     // ================= 游戏核心逻辑 (大部分未变) =================
@@ -473,17 +490,17 @@
         cardRole.textContent = '卧底';
         cardRole.className = 'text-xl font-bold text-danger mb-2';
         cardWord.textContent = gameData.wordPair.word2;
-        roleIcon.className = 'fa fa-user-secret text-4xl text-danger';
+        roleIcon.className = 'fa fa-user-secret text-5xl text-danger'; 
       } else if (player.isBlank) {
         cardRole.textContent = '白板';
         cardRole.className = 'text-xl font-bold text-warning mb-2';
         cardWord.textContent = '无';
-        roleIcon.className = 'fa fa-file-text-o text-4xl text-warning';
+        roleIcon.className = 'fa fa-file-text-o text-5xl text-warning'; 
       } else {
         cardRole.textContent = '平民';
         cardRole.className = 'text-xl font-bold text-info mb-2';
         cardWord.textContent = gameData.wordPair.word1;
-        roleIcon.className = 'fa fa-user text-4xl text-info';
+        roleIcon.className = 'fa fa-user text-5xl text-info'; 
       }
     }
 
@@ -502,6 +519,11 @@
         if (gameData.currentPlayer === gameData.playerCount) {
           playerRoleScreen.classList.add('hidden');
           voteScreen.classList.remove('hidden');
+          // Start voting logic from the second file
+          const activePlayers = gameData.players.filter(p => !p.isEliminated);
+          gameData.currentVoter = activePlayers[0].id; // First active player votes
+          totalVoters.textContent = activePlayers.length; // Update total voters to active players
+          currentVoter.textContent = gameData.currentVoter; // Display current voter
           renderVotePlayers();
         } else {
           gameData.currentPlayer++;
@@ -512,121 +534,337 @@
       }, 500);
     });
 
+    // 渲染投票玩家列表 (逻辑修改为第二个文件的样式)
     function renderVotePlayers() {
       playersContainer.innerHTML = '';
       voteConfirmation.classList.add('hidden');
+      
+      // Filter out eliminated players and the current voter
       const activePlayers = gameData.players.filter(p => !p.isEliminated && p.id !== gameData.currentVoter);
+      
       activePlayers.forEach(player => {
         const playerEl = document.createElement('div');
         playerEl.className = 'player-avatar bg-white hover:bg-primary/10 rounded-lg shadow-md p-4 transition-all duration-300 cursor-pointer flex flex-col items-center';
-        playerEl.innerHTML = `<div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2"><span class="text-xl font-bold text-primary">${player.id}</span></div><span class="font-medium">玩家 ${player.id}</span>`;
+        playerEl.innerHTML = `
+          <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+            <span class="text-xl font-bold text-primary">${player.id}</span>
+          </div>
+          <span class="font-medium">玩家 ${player.id}</span>
+        `;
+        
         playerEl.addEventListener('click', () => {
+          // Highlight selected player
+          document.querySelectorAll('.player-avatar').forEach(el => el.classList.remove('voted'));
+          playerEl.classList.add('voted'); 
+          
+          // Display confirmation dialog
           confirmedVote.textContent = `玩家 ${player.id}`;
           voteConfirmation.classList.remove('hidden');
+          
+          // Store current selected vote
           voteConfirmation.dataset.vote = player.id;
         });
+        
         playersContainer.appendChild(playerEl);
       });
     }
 
-    cancelVoteBtn.addEventListener('click', () => voteConfirmation.classList.add('hidden'));
+    // 取消投票 (逻辑修改为第二个文件的样式)
+    cancelVoteBtn.addEventListener('click', () => {
+      voteConfirmation.classList.add('hidden');
+      document.querySelectorAll('.player-avatar').forEach(el => el.classList.remove('voted')); 
+    });
 
+    // 确认投票 (逻辑修改为第二个文件的样式)
     confirmVoteBtn.addEventListener('click', () => {
+      // Record the vote
       const votedPlayer = parseInt(voteConfirmation.dataset.vote);
       gameData.votes[votedPlayer] = (gameData.votes[votedPlayer] || 0) + 1;
+      
       const remainingVoters = gameData.players.filter(p => !p.isEliminated);
-      if (gameData.currentVoter === remainingVoters.length) {
+      let currentVoterIndex = remainingVoters.findIndex(p => p.id === gameData.currentVoter);
+      
+      if (currentVoterIndex === remainingVoters.length - 1) { // If this is the last active voter
           voteScreen.classList.add('hidden');
           voteResultScreen.classList.remove('hidden');
           renderVoteResult();
       } else {
-          gameData.currentVoter++;
+          // Move to the next active voter
+          gameData.currentVoter = remainingVoters[currentVoterIndex + 1].id;
           currentVoter.textContent = gameData.currentVoter;
           voteConfirmation.classList.add('hidden');
           renderVotePlayers();
       }
     });
 
+    // 渲染投票结果 (逻辑修改为第二个文件的样式)
     function renderVoteResult() {
-        voteResultContent.innerHTML = '';
-        let maxVotes = 0;
-        let topPlayers = [];
-        const activePlayerIds = gameData.players.filter(p => !p.isEliminated).map(p => p.id);
-        for (const playerId in gameData.votes) {
-            if (activePlayerIds.includes(parseInt(playerId))) {
-                const voteCount = gameData.votes[playerId];
-                if (voteCount > maxVotes) {
-                    maxVotes = voteCount;
-                    topPlayers = [parseInt(playerId)];
-                } else if (voteCount === maxVotes) {
-                    topPlayers.push(parseInt(playerId));
-                }
-            }
+      voteResultContent.innerHTML = '';
+      
+      // Calculate max votes
+      let maxVotes = 0;
+      let topPlayers = [];
+      
+      // Only count votes for active players
+      const activePlayers = gameData.players.filter(p => !p.isEliminated);
+      const activePlayerIds = activePlayers.map(p => p.id);
+      
+      for (const playerId in gameData.votes) {
+        if (activePlayerIds.includes(parseInt(playerId))) { 
+          const votes = gameData.votes[playerId];
+          if (votes > maxVotes) {
+            maxVotes = votes;
+            topPlayers = [parseInt(playerId)];
+          } else if (votes === maxVotes) {
+            topPlayers.push(parseInt(playerId));
+          }
         }
-        let resultHTML = '<h3 class="text-xl font-bold text-primary mb-4">本轮投票结果</h3>';
-        if (topPlayers.length === 0 || maxVotes === 0) {
-            resultHTML += '<p class="text-info text-lg">本轮无人投票，无人出局。</p>';
-            continueBtn.textContent = '继续游戏';
-        } else if (topPlayers.length > 1) {
-            resultHTML += `<p class="text-warning text-lg">玩家 ${topPlayers.join('、')} 平票，无人出局。</p>`;
-            continueBtn.textContent = '继续下一轮';
-        } else {
-            const eliminatedPlayerId = topPlayers[0];
-            const eliminatedPlayer = gameData.players.find(p => p.id === eliminatedPlayerId);
-            eliminatedPlayer.isEliminated = true;
-            gameData.eliminatedPlayers.push(eliminatedPlayerId);
-            let roleText = eliminatedPlayer.isUndercover ? '卧底' : (eliminatedPlayer.isBlank ? '白板' : '平民');
-            resultHTML += `<p class="text-danger text-lg mb-4">玩家 ${eliminatedPlayerId} 以 ${maxVotes} 票被淘汰！</p>`;
-            resultHTML += `<p class="text-xl font-bold">他的身份是：<span class="text-primary">${roleText}</span></p>`;
-            continueBtn.textContent = '查看游戏状态';
-        }
-        voteResultContent.innerHTML = resultHTML;
-        if (checkGameEnd()) {
-          continueBtn.classList.add('hidden');
-        } else {
-          continueBtn.classList.remove('hidden');
-        }
+      }
+      
+      // Display vote results
+      let resultHtml = `
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-3 text-primary">第 ${gameData.currentRound} 轮投票结果</h3>
+          <p class="text-info">总票数: ${activePlayers.length}</p>
+        </div>
+        <div class="space-y-4">
+      `;
+      
+      // Display votes for each active player
+      activePlayers.forEach(player => {
+        const votes = gameData.votes[player.id] || 0;
+        const isTop = topPlayers.includes(player.id);
+        
+        resultHtml += `
+          <div class="flex items-center">
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+              <span class="font-bold text-primary">${player.id}</span>
+            </div>
+            <div class="flex-grow">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-medium">玩家 ${player.id}</span>
+                <span class="font-medium">${votes} 票</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="vote-bar bg-primary h-2 rounded-full" style="width: ${(votes / (activePlayers.length || 1)) * 100}%"></div>
+              </div>
+            </div>
+            ${isTop && maxVotes > 0 ? '<div class="ml-3 bg-primary/10 text-primary text-xs px-2 py-0.5 rounded">最高票</div>' : ''}
+          </div>
+        `;
+      });
+      
+      resultHtml += '</div>';
+      
+      if (topPlayers.length === 1 && maxVotes > 0) { 
+        // Only one player with max votes, eliminate them
+        const eliminatedPlayerId = topPlayers[0];
+        const eliminatedPlayer = gameData.players.find(p => p.id === eliminatedPlayerId);
+        eliminatedPlayer.isEliminated = true;
+        gameData.eliminatedPlayers.push(eliminatedPlayerId);
+        
+        resultHtml += `
+          <div class="mt-6 p-4 bg-danger/10 rounded-lg text-danger">
+            <div class="flex items-center">
+              <i class="fa fa-exclamation-circle mr-2 text-xl"></i>
+              <div>
+                <div class="font-bold">玩家 ${eliminatedPlayerId} 被淘汰！</div>
+                <div class="text-sm mt-1">角色: ${eliminatedPlayer.isUndercover ? '卧底' : eliminatedPlayer.isBlank ? '白板' : '平民'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        // Tie or no votes, no one eliminated
+        resultHtml += `
+          <div class="mt-6 p-4 bg-warning/10 rounded-lg text-warning">
+            <div class="flex items-center">
+              <i class="fa fa-hand-paper-o mr-2 text-xl"></i>
+              <span>本轮投票平局，无人被淘汰！</span>
+            </div>
+          </div>
+        `;
+      }
+      
+      voteResultContent.innerHTML = resultHtml;
+      
+      // Add animation effect
+      setTimeout(() => {
+        document.querySelectorAll('.vote-bar').forEach(bar => {
+          bar.style.transition = 'width 1s ease-in-out';
+        });
+      }, 100);
+      
+      // Check if game ends
+      if (checkGameEnd()) {
+        continueBtn.textContent = '查看游戏结果';
+      } else {
+        continueBtn.textContent = '继续下一轮'; 
+      }
     }
     
+    // 检查游戏是否结束 (逻辑修改为第二个文件的样式)
+    function checkGameEnd() {
+      // Calculate remaining players
+      const remainingPlayers = gameData.players.filter(p => !p.isEliminated);
+      const remainingUndercovers = remainingPlayers.filter(p => p.isUndercover);
+      const remainingCivilians = remainingPlayers.filter(p => !p.isUndercover && !p.isBlank); // Explicitly civilians, excluding blanks
+
+      // Undercover victory condition: number of undercovers >= number of civilians (and at least one undercover remains)
+      if (remainingUndercovers.length >= remainingCivilians.length && remainingUndercovers.length > 0) { 
+          return true;
+      }
+      
+      // Civilian victory condition: all undercovers eliminated
+      if (remainingUndercovers.length === 0) {
+          return true;
+      }
+
+      return false;
+    }
+    
+    // 继续游戏 (逻辑修改为第二个文件的样式)
     continueBtn.addEventListener('click', () => {
-        if (checkGameEnd()) return;
-        gameData.votes = {};
+      // Check if game ends
+      if (checkGameEnd()) {
+        voteResultScreen.classList.add('hidden');
+        gameEndScreen.classList.remove('hidden');
+        renderGameEnd();
+      } else {
+        // Increase round
         gameData.currentRound++;
+        
+        // Reset votes for the new round
+        gameData.votes = {};
+        
+        // Filter out eliminated players to determine who can vote this round
         const activePlayers = gameData.players.filter(p => !p.isEliminated);
-        gameData.currentVoter = 1;
-        totalVoters.textContent = activePlayers.length;
-        currentVoter.textContent = 1;
+        gameData.currentVoter = activePlayers[0].id; // First active player votes
+        currentVoter.textContent = gameData.currentVoter;
+        totalVoters.textContent = activePlayers.length; 
+        
+        // Go to next voting round
         voteResultScreen.classList.add('hidden');
         voteScreen.classList.remove('hidden');
         renderVotePlayers();
+      }
     });
 
-    function checkGameEnd() {
-        const activePlayers = gameData.players.filter(p => !p.isEliminated);
-        const activeUndercover = activePlayers.filter(p => p.isUndercover);
-        const activeBlank = activePlayers.filter(p => p.isBlank);
-        const activeCivilians = activePlayers.filter(p => !p.isUndercover && !p.isBlank);
-        let isEnd = false, title = '', content = '';
-        if (activeUndercover.length === 0 && activeBlank.length === 0) {
-            isEnd = true; title = '🎉 平民胜利！ 🎉'; content = '<p>所有卧底和白板都已被找出！</p>';
-        } else if (activeCivilians.length === 0 && activeUndercover.length > 0) {
-            isEnd = true; title = '👻 卧底胜利！ 👻'; content = '<p>所有平民都已被淘汰！</p>';
-        } else if (activePlayers.length <= 2) {
-             if (activeUndercover.length > 0) {
-                isEnd = true; title = '👻 卧底胜利！ 👻'; content = '<p>场上玩家过少，卧底成功隐藏到最后！</p>';
-             } else if (activeBlank.length > 0) {
-                isEnd = true; title = '🃏 白板胜利！ 🃏'; content = '<p>白板成功存活到最后！</p>';
-             }
-        }
-        if (isEnd) {
-            endGameTitle.innerHTML = title;
-            gameEndContent.innerHTML = `<div class="text-center">${content}<div class="mt-6 p-4 bg-gray-100 rounded-lg"><p class="font-bold mb-2">本局词语</p><p>平民词: <span class="font-bold text-primary">${gameData.wordPair.word1}</span></p><p>卧底词: <span class="font-bold text-danger">${gameData.wordPair.word2}</span></p></div></div>`;
-            voteResultScreen.classList.add('hidden');
-            gameEndScreen.classList.remove('hidden');
-            voteScreen.classList.add('hidden');
-            return true;
-        }
-        return false;
+    // 渲染游戏结束界面 (逻辑修改为第二个文件的样式)
+    function renderGameEnd() {
+      // Calculate remaining players
+      const remainingPlayers = gameData.players.filter(p => !p.isEliminated);
+      const remainingUndercovers = remainingPlayers.filter(p => p.isUndercover);
+      const remainingBlanks = remainingPlayers.filter(p => p.isBlank);
+      const remainingCivilians = remainingPlayers.filter(p => !p.isUndercover && !p.isBlank);
+      
+      let endHtml = '';
+      
+      // Determine winner based on the logic from the second file
+      let gameWinner = '';
+      if (remainingUndercovers.length >= remainingCivilians.length && remainingUndercovers.length > 0) {
+          endGameTitle.textContent = '游戏结束 - 卧底胜利！';
+          endGameTitle.className = 'text-2xl font-bold text-center mb-8 text-danger';
+          gameWinner = 'undercover';
+      } else { 
+          endGameTitle.textContent = '游戏结束 - 平民胜利！';
+          endGameTitle.className = 'text-2xl font-bold text-center mb-8 text-success';
+          gameWinner = 'civilian';
+      }
+
+      endHtml = `
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-3 text-primary">游戏结果</h3>
+          <div class="space-y-2 text-sm">
+            <p><i class="fa fa-info-circle mr-1"></i> 平民词语：<span class="font-bold text-primary">${gameData.wordPair.word1}</span></p>
+            <p><i class="fa fa-info-circle mr-1"></i> 卧底词语：<span class="font-bold text-danger">${gameData.wordPair.word2}</span></p>
+          </div>
+        </div>
+      `;
+      
+      if (gameWinner === 'undercover') {
+          endHtml += `
+            <div class="mb-6">
+              <h4 class="font-bold mb-2 text-danger">胜利方：卧底</h4>
+              <ul class="space-y-1">
+          `;
+          gameData.players.forEach(player => {
+            if (player.isUndercover) {
+              endHtml += `
+                <li class="flex items-center">
+                  <i class="fa fa-user-secret text-danger mr-2"></i>
+                  玩家 ${player.id}
+                  ${player.isEliminated ? '<span class="ml-2 bg-danger/10 text-danger text-xs px-2 py-0.5 rounded">已淘汰</span>' : ''}
+                </li>
+              `;
+            }
+          });
+          endHtml += `
+              </ul>
+            </div>
+            
+            <div>
+              <h4 class="font-bold mb-2 text-info">平民和白板</h4>
+              <ul class="space-y-1">
+          `;
+          gameData.players.forEach(player => {
+            if (!player.isUndercover) { // This includes blanks
+              endHtml += `
+                <li class="flex items-center">
+                  <i class="fa fa-user ${player.isBlank ? 'text-warning' : 'text-info'} mr-2"></i>
+                  玩家 ${player.id} (${player.isBlank ? '白板' : '平民'})
+                  ${player.isEliminated ? '<span class="ml-2 bg-danger/10 text-danger text-xs px-2 py-0.5 rounded">已淘汰</span>' : ''}
+                </li>
+              `;
+            }
+          });
+          endHtml += `
+              </ul>
+            </div>
+          `;
+
+      } else { // Civilian victory
+          endHtml += `
+            <div class="mb-6">
+              <h4 class="font-bold mb-2 text-success">胜利方：平民</h4>
+              <ul class="space-y-1">
+          `;
+          gameData.players.forEach(player => {
+            if (!player.isUndercover && !player.isBlank) { 
+              endHtml += `
+                <li class="flex items-center">
+                  <i class="fa fa-user text-info mr-2"></i>
+                  玩家 ${player.id}
+                  ${player.isEliminated ? '<span class="ml-2 bg-danger/10 text-danger text-xs px-2 py-0.5 rounded">已淘汰</span>' : ''}
+                </li>
+              `;
+            }
+          });
+          endHtml += `
+              </ul>
+            </div>
+            
+            <div>
+              <h4 class="font-bold mb-2 text-danger">卧底和白板</h4>
+              <ul class="space-y-1">
+          `;
+          gameData.players.forEach(player => {
+            if (player.isUndercover || player.isBlank) {
+              endHtml += `
+                <li class="flex items-center">
+                  <i class="fa ${player.isUndercover ? 'fa-user-secret text-danger' : 'fa-file-text-o text-warning'} mr-2"></i>
+                  玩家 ${player.id} (${player.isUndercover ? '卧底' : '白板'})
+                  ${player.isEliminated ? '<span class="ml-2 bg-danger/10 text-danger text-xs px-2 py-0.5 rounded">已淘汰</span>' : ''}
+                </li>
+              `;
+            }
+          });
+          endHtml += `
+              </ul>
+            </div>
+          `;
+      }
+      gameEndContent.innerHTML = endHtml;
     }
   </script>
 </body>
